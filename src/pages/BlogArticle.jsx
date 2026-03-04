@@ -99,6 +99,9 @@ const BlogArticle = () => {
                     <FaArrowLeft /> Volver al Blog
                 </Link>
 
+                <h1 className="blog-title">{post.title}</h1>
+                {post.subtitle && <h2 className="blog-subtitle" style={{ marginTop: '0' }}>{post.subtitle}</h2>}
+
                 <div className="article-hero-img-wrapper">
                     <img src={post.image} alt={post.title} className="article-hero-img" />
                 </div>

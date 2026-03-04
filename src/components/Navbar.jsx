@@ -38,11 +38,13 @@ const Navbar = () => {
   }, []);
 
   const handleLogout = async () => {
-    try {
-      await logout();
-      navigate('/');
-    } catch (error) {
-      console.error('Failed to log out', error);
+    if (window.confirm("¿Estás seguro de que deseas cerrar sesión?")) {
+      try {
+        await logout();
+        navigate('/');
+      } catch (error) {
+        console.error('Failed to log out', error);
+      }
     }
   };
 
