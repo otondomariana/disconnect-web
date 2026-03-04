@@ -1,11 +1,22 @@
 import React, { useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { blogPosts } from '../data/blogData';
 import { FaArrowLeft } from 'react-icons/fa';
+import CommentSection from '../components/CommentSection';
+import { db } from '../firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
-// A simple helper to parse basic markdown-like content into elements
+// A simple helper to parse legacy markdown-like content OR render rich HTML content
 const renderContent = (content) => {
-    return content.split('\n').map((line, index) => {
+    // Sanitizar non-breaking spaces que evitan el salto de línea normal
+    const cleanContent = content.replace(/&nbsp;/g, ' ');
+
+    // Determine if the content is HTML (from React Quill)
+    if (cleanContent.includes('<p>') || cleanContent.includes('<h1>') || cleanContent.includes('<h2>') || cleanContent.includes('<strong>')) {
+        return <div className="article-html-content" dangerouslySetInnerHTML={{ __html: cleanContent }} />;
+    }
+
+    // Legacy parser for old articles
+    return cleanContent.split('\n').map((line, index) => {
         if (line.startsWith('# ')) {
             return <h1 key={index} className="blog-title">{line.substring(2)}</h1>;
         } else if (line.startsWith('## ')) {
@@ -28,12 +39,49 @@ const renderContent = (content) => {
 
 const BlogArticle = () => {
     const { id } = useParams();
-    const post = blogPosts.find(p => p.id === id);
+    const [post, setPost] = React.useState(null);
+    const [loading, setLoading] = React.useState(true);
 
     useEffect(() => {
-        // Scroll to top on load
         window.scrollTo(0, 0);
+
+        const fetchPost = async () => {
+            try {
+                const docRef = doc(db, 'articles', id);
+                const docSnap = await getDoc(docRef);
+
+                if (docSnap.exists()) {
+                    setPost({ id: docSnap.id, ...docSnap.data() });
+                } else {
+                    setPost(null);
+                }
+            } catch (error) {
+                console.error("Error fetching article:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchPost();
     }, [id]);
+
+    const formatDate = (timestamp) => {
+        if (!timestamp) return '';
+        const date = timestamp.toDate();
+        return new Intl.DateTimeFormat('es-AR', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+        }).format(date);
+    };
+
+    if (loading) {
+        return (
+            <div className="container section-padding" style={{ textAlign: 'center', marginTop: '100px' }}>
+                <h2>Cargando artículo...</h2>
+            </div>
+        );
+    }
 
     if (!post) {
         return (
@@ -56,9 +104,11 @@ const BlogArticle = () => {
                 </div>
 
                 <article className="article-content">
-                    <span className="blog-date-article">{post.date}</span>
+                    <span className="blog-date-article">{formatDate(post.createdAt)}</span>
                     {renderContent(post.content)}
                 </article>
+
+                <CommentSection articleId={id} />
             </div>
         </main>
     );
